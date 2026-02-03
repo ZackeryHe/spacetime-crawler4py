@@ -1,5 +1,30 @@
 import re
-from urllib.parse import urlparse
+import os
+import json
+from urllib.parse import urlparse, urljoin, urldefrag
+from bs4 import BeautifulSoup
+
+
+# *.ics.uci.edu, *.cs.uci.edu, *.informatics.uci.edu, *.stat.uci.edu
+ALLOWED_DOMAIN_PATTERNS = [
+    re.compile(r'^(.+\.)?ics\.uci\.edu$'),
+    re.compile(r'^(.+\.)?cs\.uci\.edu$'),
+    re.compile(r'^(.+\.)?informatics\.uci\.edu$'),
+    re.compile(r'^(.+\.)?stat\.uci\.edu$'),
+]
+
+
+# note we store LOWERCASE only tokens right now
+def _load_stop_words():
+    stop_words = set()
+    stopwords_path = os.path.join(os.path.dirname(__file__), 'stopwords.txt')
+    with open(stopwords_path, 'r') as f:
+        for line in f:
+            for word in line.strip().split():
+                stop_words.add(word.lower())
+    return stop_words
+
+STOP_WORDS = _load_stop_words()
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
