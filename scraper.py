@@ -1,6 +1,5 @@
 import re
 import os
-import json
 from urllib.parse import urlparse, urljoin, urldefrag
 from bs4 import BeautifulSoup
 
@@ -40,7 +39,27 @@ def extract_next_links(url, resp):
     #         resp.raw_response.url: the url, again
     #         resp.raw_response.content: the content of the page!
     # Return a list with the hyperlinks (as strings) scrapped from resp.raw_response.content
-    return list()
+    links = []
+    
+    if resp.status != 200:
+        return links
+    
+    if not resp.raw_response or not resp.raw_response.content:
+        return links
+    
+    try:
+        soup = BeautifulSoup(resp.raw_response.content, 'lxml')
+        base_url = resp.url if resp.url else url
+        
+        for anchor in soup.find_all('a', href=True):
+            href = anchor['href']
+            absolute_url = urljoin(base_url, href)
+            url_without_fragment, _ = urldefrag(absolute_url)
+            links.append(url_without_fragment)
+    except Exception as e:
+        pass
+    
+    return links
 
 def is_valid(url):
     # Decide whether to crawl this url or not. 
@@ -48,9 +67,18 @@ def is_valid(url):
     # There are already some conditions that return False.
     try:
         parsed = urlparse(url)
+        
         if parsed.scheme not in set(["http", "https"]):
             return False
-        return not re.match(
+        
+        if not parsed.netloc:
+            return False
+        
+        domain = parsed.netloc.lower()
+        if not any(pattern.match(domain) for pattern in ALLOWED_DOMAIN_PATTERNS):
+            return False
+        
+        if re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
             + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
@@ -58,8 +86,10 @@ def is_valid(url):
             + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower())
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
+            return False
+        
+        return True
 
-    except TypeError:
-        print ("TypeError for ", parsed)
-        raise
+    except (TypeError, AttributeError) as e:
+        return False
