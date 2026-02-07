@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 import warnings
 from utils import get_logger
 from utils.duplicate_checker import DuplicateChecker
-from utils.analytics import analytics, maybe_save_analytics, save_analytics
+from utils.analytics import analytics, analytics_lock, maybe_save_analytics, save_analytics
 from utils.url_filters import UrlFilter
 from utils.content_filters import ContentFilter
 
@@ -74,7 +74,8 @@ def scraper(url, resp):
         if is_valid(link):
             valid.append(link)
         else:
-            analytics['skipped_url_filter'] += 1
+            with analytics_lock:
+                analytics['skipped_url_filter'] += 1
     return valid
 
 def extract_next_links(url, resp):
@@ -90,16 +91,19 @@ def extract_next_links(url, resp):
     links = []
     
     if resp.status != 200:
-        analytics['skipped_not_200'] += 1
+        with analytics_lock:
+            analytics['skipped_not_200'] += 1
         return links
     
     if not resp.raw_response or not resp.raw_response.content:
-        analytics['skipped_empty_or_size'] += 1
+        with analytics_lock:
+            analytics['skipped_empty_or_size'] += 1
         return links
 
     content_len = len(resp.raw_response.content)
     if content_len < MIN_CONTENT_SIZE or content_len > MAX_CONTENT_SIZE:
-        analytics['skipped_empty_or_size'] += 1
+        with analytics_lock:
+            analytics['skipped_empty_or_size'] += 1
         return links
 
     try:
@@ -116,12 +120,13 @@ def extract_next_links(url, resp):
 
         text = soup.get_text()
         if _content_filter.should_skip(text):
-            analytics['skipped_empty_or_size'] += 1
+            with analytics_lock:
+                analytics['skipped_empty_or_size'] += 1
             return links
         if _duplicate_checker.is_duplicate(text):
-            analytics['skipped_duplicate'] += 1
+            with analytics_lock:
+                analytics['skipped_duplicate'] += 1
             return links
-        _duplicate_checker.add_doc(text)
 
         url_without_fragment, _ = urldefrag(base_url)
         process_page_analytics(url_without_fragment, soup)
@@ -132,15 +137,12 @@ def extract_next_links(url, resp):
             url_without_fragment, _ = urldefrag(absolute_url)
             links.append(url_without_fragment)
     except Exception:
-        analytics['skipped_error'] += 1
+        with analytics_lock:
+            analytics['skipped_error'] += 1
 
     return links
 
 def process_page_analytics(url, soup):
-    analytics['pages_processed'] += 1
-    analytics['unique_urls'].add(url)
-    maybe_save_analytics()
-
     for script_or_style in soup(['script', 'style']):
         script_or_style.decompose()
 
@@ -150,25 +152,30 @@ def process_page_analytics(url, soup):
     tokens = re.findall(r'[a-zA-Z0-9]+', text.lower())
 
     # filter out stop words and 1-character words
-    # SHOULD WE FILTER OUT 1 CHAR WORDS?
     words = [token for token in tokens if token not in STOP_WORDS and len(token) > 1]
 
-    # word frequencies
-    for word in words:
-        analytics['word_frequencies'][word] = analytics['word_frequencies'].get(word, 0) + 1
-
-    # longest page
     word_count = len(words)
-    if word_count > analytics['longest_page']['word_count']:
-        analytics['longest_page']['url'] = url
-        analytics['longest_page']['word_count'] = word_count
+    local_freqs = {}
+    for word in words:
+        local_freqs[word] = local_freqs.get(word, 0) + 1
 
-    # subdomain and track pages per subdomain
     parsed = urlparse(url)
     subdomain = parsed.netloc.lower()
-    if subdomain not in analytics['subdomains']:
-        analytics['subdomains'][subdomain] = set()
-    analytics['subdomains'][subdomain].add(url)
+
+    # update analytics at once under lock
+    with analytics_lock:
+        analytics['pages_processed'] += 1
+        analytics['unique_urls'].add(url)
+        for word, count in local_freqs.items():
+            analytics['word_frequencies'][word] = analytics['word_frequencies'].get(word, 0) + count
+        if word_count > analytics['longest_page']['word_count']:
+            analytics['longest_page']['url'] = url
+            analytics['longest_page']['word_count'] = word_count
+        if subdomain not in analytics['subdomains']:
+            analytics['subdomains'][subdomain] = set()
+        analytics['subdomains'][subdomain].add(url)
+
+    maybe_save_analytics()
 
 def is_valid(url):
     if TESTING_LIMIT >= 0 and analytics['pages_processed'] >= TESTING_LIMIT:

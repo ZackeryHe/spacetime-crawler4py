@@ -22,11 +22,11 @@ analytics = {
 ANALYTICS_SAVE_FILE = "analytics.shelve"
 _analytics_save_interval = 50
 _last_analytics_save_at = 0
-_analytics_save_lock = threading.Lock()
+analytics_lock = threading.Lock()
 
 def reset_analytics(path=None):
     global _last_analytics_save_at
-    with _analytics_save_lock:
+    with analytics_lock:
         analytics['unique_urls'] = set()
         analytics['longest_page'] = {'url': None, 'word_count': 0}
         analytics['word_frequencies'] = {}
@@ -44,27 +44,32 @@ def reset_analytics(path=None):
 
 def maybe_save_analytics():
     global _last_analytics_save_at
-    with _analytics_save_lock:
+    should_save = False
+    with analytics_lock:
         if analytics['pages_processed'] - _last_analytics_save_at >= _analytics_save_interval:
             _last_analytics_save_at = analytics['pages_processed']
-            save_analytics()
+            should_save = True
+    if should_save:
+        save_analytics()
 
 
 def save_analytics(path=None):
     path = path or ANALYTICS_SAVE_FILE
     try:
-        data = {
-            'pages_processed': analytics['pages_processed'],
-            'skipped_not_200': analytics['skipped_not_200'],
-            'skipped_empty_or_size': analytics['skipped_empty_or_size'],
-            'skipped_duplicate': analytics['skipped_duplicate'],
-            'skipped_error': analytics['skipped_error'],
-            'skipped_url_filter': analytics['skipped_url_filter'],
-            'unique_urls': list(analytics['unique_urls']),
-            'longest_page': dict(analytics['longest_page']),
-            'word_frequencies': dict(analytics['word_frequencies']),
-            'subdomains': {k: list(v) for k, v in analytics['subdomains'].items()},
-        }
+        with analytics_lock:
+            data = {
+                'pages_processed': analytics['pages_processed'],
+                'skipped_not_200': analytics['skipped_not_200'],
+                'skipped_empty_or_size': analytics['skipped_empty_or_size'],
+                'skipped_duplicate': analytics['skipped_duplicate'],
+                'skipped_error': analytics['skipped_error'],
+                'skipped_url_filter': analytics['skipped_url_filter'],
+                'unique_urls': list(analytics['unique_urls']),
+                'longest_page': dict(analytics['longest_page']),
+                'word_frequencies': dict(analytics['word_frequencies']),
+                'subdomains': {k: list(v) for k, v in analytics['subdomains'].items()},
+            }
+        # Shelve write outside lock (no contention during disk I/O)
         with shelve.open(path, 'c') as sh:
             for k, v in data.items():
                 sh[k] = v

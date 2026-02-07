@@ -1,3 +1,4 @@
+import threading
 from collections import deque, Counter
 
 from .tokenizer import tokenize_string
@@ -23,21 +24,20 @@ class DuplicateChecker(object):
         self.n = n
         self.threshold = similarity_threshold
         self._vectors = deque(maxlen=n)
+        self._lock = threading.Lock()
 
     def _vectorize(self, text):
         tokens = tokenize_string(text)
         return _to_vector(tokens) if tokens else {}
 
     def is_duplicate(self, doc_text):
+        """Check and add atomically. Returns True if duplicate."""
         vec = self._vectorize(doc_text)
         if not vec:
             return False
-        for stored in self._vectors:
-            if _cosine_sim(vec, stored) >= self.threshold:
-                return True
-        return False
-
-    def add_doc(self, doc_text):
-        vec = self._vectorize(doc_text)
-        if vec:
+        with self._lock:
+            for stored in self._vectors:
+                if _cosine_sim(vec, stored) >= self.threshold:
+                    return True
             self._vectors.append(vec)
+            return False
