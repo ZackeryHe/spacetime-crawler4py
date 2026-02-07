@@ -6,7 +6,7 @@ from utils.tokenizer import tokenize_string
 
 EXACT_TRAP_PARAMS = {'q', 's'}
 CONTAINS_TRAP_PARAMS = {'search', 'query', 'filter', 'share'}
-DATASET_PATH_SEGMENTS = {'sampledata', 'dataset', 'datasets', 'rawdata'}
+DATASET_PATH_SEGMENTS = {'sampledata', 'dataset', 'datasets', 'rawdata', 'raw-attachment'}
 MAX_PAGINATION_PAGE = 5
 PAGINATION_QUERY_PARAMS = ['p=', 'cat=', 'author=', 'page_id=', 'limit=']
 
