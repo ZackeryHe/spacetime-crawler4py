@@ -1,7 +1,12 @@
 import re
 import os
 from urllib.parse import urlparse, urljoin, urldefrag
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
+
+# Beautiful soup sent a warning and said you can ignore it with the following:
+import warnings
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
 # set to -1 for no limit
 TESTING_LIMIT = -1
 
@@ -92,6 +97,14 @@ def _has_file_extension_in_query(parsed_url):
     # check if any query param value ends with a binary extension
     for ext in BINARY_EXTENSIONS:
         if ext in query_lower:
+            return True
+    return False
+
+def _is_wiki_trap(parsed_url):
+    if 'doku.php' in parsed_url.path.lower() and parsed_url.query:
+        query_lower = parsed_url.query.lower()
+        wiki_traps = ['do=', 'idx=', 'sectok=']
+        if any(trap in query_lower for trap in wiki_traps):
             return True
     return False
 
@@ -231,6 +244,9 @@ def is_valid(url):
             return False
 
         if _has_file_extension_in_query(parsed):
+            return False
+
+        if _is_wiki_trap(parsed):
             return False
 
         return True
