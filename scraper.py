@@ -3,8 +3,14 @@ import os
 from urllib.parse import urlparse, urljoin, urldefrag
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
-# Beautiful soup sent a warning and said you can ignore it with the following:
 import warnings
+from utils import get_logger
+from utils.duplicate_checker import DuplicateChecker
+from utils.analytics import analytics, maybe_save_analytics, save_analytics
+from utils.url_filters import UrlFilter
+
+_logger = get_logger("SCRAPER")
+_duplicate_checker = DuplicateChecker(n=1000, similarity_threshold=0.9)
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 # set to -1 for no limit
@@ -17,70 +23,6 @@ ALLOWED_DOMAIN_PATTERNS = [
     re.compile(r'^(.+\.)?informatics\.uci\.edu$'),
     re.compile(r'^(.+\.)?stat\.uci\.edu$'),
 ]
-
-
-# note we store LOWERCASE only tokens right now
-def _load_stop_words():
-    stop_words = set()
-    stopwords_path = os.path.join(os.path.dirname(__file__), 'stopwords.txt')
-    with open(stopwords_path, 'r') as f:
-        for line in f:
-            for word in line.strip().split():
-                stop_words.add(word.lower())
-    return stop_words
-
-STOP_WORDS = _load_stop_words()
-
-analytics = {
-    'unique_urls': set(),     # set of defragmented URLs for unique page count
-    'longest_page': {         # track longest page by word count
-        'url': None,
-        'word_count': 0
-    },
-    'word_frequencies': {},   # dict of word -> count (excluding stop words)
-    'subdomains': {},         # dict of subdomain -> set of URLs
-    # below are not uesd for the actual report
-    'pages_processed': 0,     # counter for testing limit
-    'report_generated': False # flag to ensure report is only generated once
-}
-
-def _is_calendar_path(parsed_url):
-    path = parsed_url.path.lower()
-    segments = [seg for seg in path.split('/') if seg]
-
-    # check for YYYY/MM/DD or YYYY/MM patterns
-    for i in range(len(segments) - 1):
-        # check if segment looks like a year (within 1900-2099)
-        if segments[i].isdigit() and len(segments[i]) == 4:
-            year = int(segments[i])
-            if 1900 <= year <= 2099:
-                # check if next segment is a month (01-12)
-                if i + 1 < len(segments) and segments[i+1].isdigit():
-                    month = int(segments[i+1])
-                    if 1 <= month <= 12:
-                        return True
-
-    # check for YYYY-MM-DD or YYYY-MM pattern in path
-    if re.search(r'\b\d{4}-\d{2}(-\d{2})?\b', path):
-        return True
-
-    # check for /events/month/, /events/day/, /events/week/ style paths
-    if re.search(r'/events/(month|day|week|list|category)/', path):
-        return True
-
-    # check for /timeline paths (Trac wiki timeline trap)
-    if '/timeline' in path:
-        return True
-
-    # check for date parameters in query
-    if parsed_url.query:
-        query_lower = parsed_url.query.lower()
-        date_params = ['date', 'year', 'month', 'day', 'time', 'timestamp', 'ical']
-        if any(param in query_lower for param in date_params):
-            return True
-
-    return False
-
 BINARY_EXTENSIONS = {
     '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.tiff', '.tif',
     '.webp', '.avif', '.svg', '.psd',
@@ -94,72 +36,24 @@ BINARY_EXTENSIONS = {
     '.lif', '.rle', '.pov',
     '.ps', '.eps', '.tex', '.names', '.data', '.dat', '.cnf', '.tgz', '.sha1',
     '.thmx', '.mso', '.arff', '.rm', '.smil', '.img', '.apk', '.war', '.sql', '.db', '.bak',
-    '.epub', '.rtf', '.csv', '.swf',
+    '.epub', '.rtf', '.csv', '.swf', '.mol', '.java', '.can', '.untetra', '.bib', '.py', '.c', '.h'
 }
+_url_filter = UrlFilter(ALLOWED_DOMAIN_PATTERNS, BINARY_EXTENSIONS)
 
-def _has_file_extension_in_query(parsed_url):
-    if not parsed_url.query:
-        return False
-    query_lower = parsed_url.query.lower()
 
-    # check for media-serving actions
-    media_actions = ['do=media', 'action=download', 'action=export']
-    if any(action in query_lower for action in media_actions):
-        return True
-    
-    # check if any query param value ends with a binary extension
-    for ext in BINARY_EXTENSIONS:
-        if ext in query_lower:
-            return True
-    return False
+def _load_stop_words():
+    stop_words = set()
+    stopwords_path = os.path.join(os.path.dirname(__file__), 'stopwords.txt')
+    with open(stopwords_path, 'r') as f:
+        for line in f:
+            for word in line.strip().split():
+                stop_words.add(word.lower())
+    return stop_words
 
-def _is_gitlab_trap(parsed_url):
-    if 'gitlab' not in parsed_url.netloc.lower():
-        return False
-    path = parsed_url.path.lower()
-    trap_segments = ['/-/commit/', '/-/blob/', '/-/tree/', '/-/raw/',
-                     '/-/blame/', '/-/compare/', '/-/merge_requests/',
-                     '/-/jobs/', '/-/pipelines/', '/-/network/',
-                     '/-/tags/', '/-/commits/']
-    return any(seg in path for seg in trap_segments)
+STOP_WORDS = _load_stop_words()
 
-def _is_login_page(parsed_url):
-    path = parsed_url.path.lower()
-    return bool(re.search(r'(wp-login|login|signin|sign-in)\.php', path))
-
-def _is_search_or_filter_page(parsed_url):
-    if not parsed_url.query:
-        return False
-    query_lower = parsed_url.query.lower()
-    search_params = ['search=', 'query=', 'q=', 's=']
-    return any(param in query_lower for param in search_params)
-
-def _is_display_html_trap(parsed_url):
-    path = parsed_url.path.lower()
-    return bool(re.search(r'display\.html/.+', path))
-
-def _is_eppstein_filtered_path(parsed_url):
-    segments = [s.lower() for s in parsed_url.path.split('/') if s]
-    return bool(segments and {'junkyard', 'pix', 'ca', 'untetra'} & set(segments))
-
-def _is_wiki_trap(parsed_url):
-    if not parsed_url.query:
-        return False
-    query_lower = parsed_url.query.lower()
-    path_lower = parsed_url.path.lower()
-
-    # DokuWiki traps
-    if 'doku.php' in path_lower:
-        wiki_traps = ['do=', 'idx=', 'sectok=']
-        if any(trap in query_lower for trap in wiki_traps):
-            return True
-
-    # Trac wiki version/diff/format traps
-    trac_traps = ['version=', 'action=diff', 'format=txt']
-    if any(trap in query_lower for trap in trac_traps):
-        return True
-
-    return False
+MIN_CONTENT_SIZE = 100
+MAX_CONTENT_SIZE = 5_000_000
 
 def scraper(url, resp):
     if TESTING_LIMIT >= 0 and analytics['pages_processed'] >= TESTING_LIMIT:
@@ -169,7 +63,13 @@ def scraper(url, resp):
         raise Exception(f"Reached testing limit of {TESTING_LIMIT} pages. Report generated. Stopping crawler.")
 
     links = extract_next_links(url, resp)
-    return [link for link in links if is_valid(link)]
+    valid = []
+    for link in links:
+        if is_valid(link):
+            valid.append(link)
+        else:
+            analytics['skipped_url_filter'] += 1
+    return valid
 
 def extract_next_links(url, resp):
     # Implementation required.
@@ -184,15 +84,18 @@ def extract_next_links(url, resp):
     links = []
     
     if resp.status != 200:
+        analytics['skipped_not_200'] += 1
         return links
     
     if not resp.raw_response or not resp.raw_response.content:
+        analytics['skipped_empty_or_size'] += 1
         return links
 
-    # skip very large files
-    if len(resp.raw_response.content) > 5_000_000:
+    content_len = len(resp.raw_response.content)
+    if content_len < MIN_CONTENT_SIZE or content_len > MAX_CONTENT_SIZE:
+        analytics['skipped_empty_or_size'] += 1
         return links
-    
+
     try:
         soup = BeautifulSoup(resp.raw_response.content, 'lxml')
         base_url = resp.url if resp.url else url
@@ -205,10 +108,14 @@ def extract_next_links(url, resp):
         # ...actually, I think checks here are low value because we have already downloaded the page
         # efforts should be focused all on url detection
 
-        # is page empty
         text = soup.get_text()
         if not text.strip():
+            analytics['skipped_empty_or_size'] += 1
             return links
+        if _duplicate_checker.is_duplicate(text):
+            analytics['skipped_duplicate'] += 1
+            return links
+        _duplicate_checker.add_doc(text)
 
         url_without_fragment, _ = urldefrag(base_url)
         process_page_analytics(url_without_fragment, soup)
@@ -224,9 +131,9 @@ def extract_next_links(url, resp):
     return links
 
 def process_page_analytics(url, soup):
-    # given the defragmented URL already
     analytics['pages_processed'] += 1
     analytics['unique_urls'].add(url)
+    maybe_save_analytics()
 
     for script_or_style in soup(['script', 'style']):
         script_or_style.decompose()
@@ -258,67 +165,37 @@ def process_page_analytics(url, soup):
     analytics['subdomains'][subdomain].add(url)
 
 def is_valid(url):
-    # Decide whether to crawl this url or not.
-    # If you decide to crawl it, return True; otherwise return False.
-    # There are already some conditions that return False.
-
-    # Hard-coded limit for testing: stop after 50 pages
     if TESTING_LIMIT >= 0 and analytics['pages_processed'] >= TESTING_LIMIT:
         return False
-
-    try:
-        parsed = urlparse(url)
-        
-        if parsed.scheme not in set(["http", "https"]):
-            return False
-        
-        if not parsed.netloc:
-            return False
-        
-        domain = parsed.netloc.lower()
-        if not any(pattern.match(domain) for pattern in ALLOWED_DOMAIN_PATTERNS):
-            return False
-        
-        path_lower = parsed.path.lower()
-        if any(path_lower.endswith(ext) for ext in BINARY_EXTENSIONS):
-            return False
-        
-        if _is_login_page(parsed):
-            return False
-
-        # add our "is this url good" rules here
-        if _is_calendar_path(parsed):
-            return False
-
-        if _has_file_extension_in_query(parsed):
-            return False
-
-        if _is_wiki_trap(parsed):
-            return False
-
-        if _is_gitlab_trap(parsed):
-            return False
-
-        if _is_display_html_trap(parsed):
-            return False
-
-        if _is_eppstein_filtered_path(parsed):
-            return False
-
-        if _is_search_or_filter_page(parsed):
-            return False
-
-        return True
-
-    except (TypeError, AttributeError) as e:
-        return False
+    return _url_filter.is_valid(url)
 
 def generate_report(filename="report.txt"):
+    unique_urls = analytics['unique_urls']
+    longest = analytics['longest_page']
+    word_freqs = analytics['word_frequencies']
+    subdomains = analytics['subdomains']
+    top_50 = sorted(word_freqs.items(), key=lambda x: x[1], reverse=True)[:50]
+    ics_subdomains = {
+        sub: urls for sub, urls in subdomains.items()
+        if sub.endswith('.uci.edu')
+    }
+
     with open(filename, 'w') as f:
-        f.write(f"unique_pages: {len(analytics['unique_urls'])}\n")
-        f.write(f"longest_page: {analytics['longest_page']}\n")
-        f.write(f"top_50_words: {sorted(analytics['word_frequencies'].items(), key=lambda x: x[1], reverse=True)[:50]}\n")
-        f.write("subdomains:\n")
-        for subdomain in sorted(analytics['subdomains'].keys()):
-            f.write(f"{subdomain} {len(analytics['subdomains'][subdomain])}\n")
-    print(f"Report saved to {filename}")
+        f.write(f"Q1: Unique Pages\n")
+        f.write(f"{len(unique_urls)}\n\n")
+
+        f.write(f"Q2: Longest Page (by word count)\n")
+        f.write(f"{longest['url']}\n")
+        f.write(f"{longest['word_count']} words\n\n")
+
+        f.write(f"Q3: 50 Most Common Words\n")
+        for rank, (word, count) in enumerate(top_50, 1):
+            f.write(f"{rank}. {word} - {count}\n")
+        f.write("\n")
+
+        f.write(f"Q4: Subdomains ({len(ics_subdomains)} found)\n")
+        for sub in sorted(ics_subdomains.keys()):
+            f.write(f"{sub}, {len(ics_subdomains[sub])}\n")
+
+    save_analytics()
+    _logger.info(f"Report saved to {filename}")
