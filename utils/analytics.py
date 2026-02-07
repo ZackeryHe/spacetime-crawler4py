@@ -17,6 +17,7 @@ analytics = {
     'skipped_duplicate': 0,
     'skipped_error': 0,
     'skipped_url_filter': 0,
+    'word_sources': {},
 }
 
 ANALYTICS_SAVE_FILE = "analytics.shelve"
@@ -38,6 +39,7 @@ def reset_analytics(path=None):
         analytics['skipped_duplicate'] = 0
         analytics['skipped_error'] = 0
         analytics['skipped_url_filter'] = 0
+        analytics['word_sources'] = {}
     _last_analytics_save_at = 0
     save_analytics(path)
 
@@ -68,6 +70,7 @@ def save_analytics(path=None):
                 'longest_page': dict(analytics['longest_page']),
                 'word_frequencies': dict(analytics['word_frequencies']),
                 'subdomains': {k: list(v) for k, v in analytics['subdomains'].items()},
+                'word_sources': {w: dict(urls) for w, urls in analytics['word_sources'].items()},
             }
         # Shelve write outside lock (no contention during disk I/O)
         with shelve.open(path, 'c') as sh:
@@ -94,6 +97,7 @@ def load_analytics(path=None):
                 'skipped_duplicate': sh.get('skipped_duplicate', 0),
                 'skipped_error': sh.get('skipped_error', 0),
                 'skipped_url_filter': sh.get('skipped_url_filter', 0),
+                'word_sources': {w: dict(urls) for w, urls in sh.get('word_sources', {}).items()},
             }
     except Exception:
         return None
@@ -114,4 +118,5 @@ def restore_analytics(path=None):
     analytics['skipped_duplicate'] = data['skipped_duplicate']
     analytics['skipped_error'] = data['skipped_error']
     analytics['skipped_url_filter'] = data['skipped_url_filter']
+    analytics['word_sources'] = data.get('word_sources', {})
     _last_analytics_save_at = analytics['pages_processed']

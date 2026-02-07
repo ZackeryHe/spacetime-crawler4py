@@ -59,6 +59,8 @@ def _load_stop_words():
 
 STOP_WORDS = _load_stop_words()
 
+TRACKED_WORDS = {'04', 'research', 'ics', '05'}
+
 MIN_CONTENT_SIZE = 100
 MAX_CONTENT_SIZE = 5_000_000
 
@@ -169,6 +171,11 @@ def process_page_analytics(url, soup):
         analytics['unique_urls'].add(url)
         for word, count in local_freqs.items():
             analytics['word_frequencies'][word] = analytics['word_frequencies'].get(word, 0) + count
+        for word in TRACKED_WORDS:
+            if word in local_freqs:
+                if word not in analytics['word_sources']:
+                    analytics['word_sources'][word] = {}
+                analytics['word_sources'][word][url] = local_freqs[word]
         if word_count > analytics['longest_page']['word_count']:
             analytics['longest_page']['url'] = url
             analytics['longest_page']['word_count'] = word_count
