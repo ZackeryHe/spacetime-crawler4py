@@ -91,6 +91,10 @@ BINARY_EXTENSIONS = {
     '.exe', '.dmg', '.msi', '.bin', '.dll', '.jar',
     '.woff', '.woff2', '.ttf', '.otf', '.eot',
     '.css', '.js',
+    '.lif', '.rle', '.pov',
+    '.ps', '.eps', '.tex', '.names', '.data', '.dat', '.cnf', '.tgz', '.sha1',
+    '.thmx', '.mso', '.arff', '.rm', '.smil', '.img', '.apk', '.war', '.sql', '.db', '.bak',
+    '.epub', '.rtf', '.csv', '.swf',
 }
 
 def _has_file_extension_in_query(parsed_url):
@@ -129,6 +133,14 @@ def _is_search_or_filter_page(parsed_url):
     query_lower = parsed_url.query.lower()
     search_params = ['search=', 'query=', 'q=', 's=']
     return any(param in query_lower for param in search_params)
+
+def _is_display_html_trap(parsed_url):
+    path = parsed_url.path.lower()
+    return bool(re.search(r'display\.html/.+', path))
+
+def _is_eppstein_filtered_path(parsed_url):
+    segments = [s.lower() for s in parsed_url.path.split('/') if s]
+    return bool(segments and {'junkyard', 'pix', 'ca', 'untetra'} & set(segments))
 
 def _is_wiki_trap(parsed_url):
     if not parsed_url.query:
@@ -267,18 +279,8 @@ def is_valid(url):
         if not any(pattern.match(domain) for pattern in ALLOWED_DOMAIN_PATTERNS):
             return False
         
-        if re.match(
-            r".*\.(css|js|bmp|gif|jpe?g|ico"
-            + r"|png|tiff?|mid|mp2|mp3|mp4"
-            + r"|wav|avi|mov|mpeg|ram|m4v|mkv|ogg|ogv|pdf"
-            + r"|ps|eps|tex|ppt|pptx|doc|docx|xls|xlsx|names"
-            + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
-            + r"|epub|dll|cnf|tgz|sha1"
-            + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz"
-            + r"|webp|avif|svg|webm|flv"
-            + r"|woff|woff2|ttf|otf|eot"
-            + r"|img|apk|war|sql|db|bak)$", parsed.path.lower()):
+        path_lower = parsed.path.lower()
+        if any(path_lower.endswith(ext) for ext in BINARY_EXTENSIONS):
             return False
         
         if _is_login_page(parsed):
@@ -295,6 +297,12 @@ def is_valid(url):
             return False
 
         if _is_gitlab_trap(parsed):
+            return False
+
+        if _is_display_html_trap(parsed):
+            return False
+
+        if _is_eppstein_filtered_path(parsed):
             return False
 
         if _is_search_or_filter_page(parsed):
