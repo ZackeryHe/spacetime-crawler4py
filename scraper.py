@@ -38,6 +38,31 @@ analytics = {
     'report_generated': False       # Flag to ensure report is only generated once
 }
 
+def _is_calendar_path(parsed_url):
+    path = parsed_url.path.lower()
+    segments = [seg for seg in path.split('/') if seg]
+
+    # check for YYYY/MM/DD or YYYY/MM patterns
+    for i in range(len(segments) - 1):
+        # check if segment looks like a year (within 1900-2099)
+        if segments[i].isdigit() and len(segments[i]) == 4:
+            year = int(segments[i])
+            if 1900 <= year <= 2099:
+                # check if next segment is a month (01-12)
+                if i + 1 < len(segments) and segments[i+1].isdigit():
+                    month = int(segments[i+1])
+                    if 1 <= month <= 12:
+                        return True
+
+    # check for date parameters in query
+    if parsed_url.query:
+        query_lower = parsed_url.query.lower()
+        date_params = ['date', 'year', 'month', 'day', 'time', 'timestamp']
+        if any(param in query_lower for param in date_params):
+            return True
+
+    return False
+
 def scraper(url, resp):
     if analytics['pages_processed'] >= TESTING_LIMIT:
         if not analytics['report_generated']:
@@ -156,6 +181,10 @@ def is_valid(url):
             + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
             return False
         
+        # add our rules
+        if _is_calendar_path(parsed):
+            return False
+
         return True
 
     except (TypeError, AttributeError) as e:
