@@ -32,15 +32,16 @@ def _load_stop_words():
 STOP_WORDS = _load_stop_words()
 
 analytics = {
-    'unique_urls': set(),           # Set of defragmented URLs for unique page count
-    'longest_page': {               # Track longest page by word count
+    'unique_urls': set(),     # set of defragmented URLs for unique page count
+    'longest_page': {         # track longest page by word count
         'url': None,
         'word_count': 0
     },
-    'word_frequencies': {},         # Dict of word -> count (excluding stop words)
-    'subdomains': {},               # Dict of subdomain -> set of URLs
-    'pages_processed': 0,           # Counter for testing limit
-    'report_generated': False       # Flag to ensure report is only generated once
+    'word_frequencies': {},   # dict of word -> count (excluding stop words)
+    'subdomains': {},         # dict of subdomain -> set of URLs
+    # below are not uesd for the actual report
+    'pages_processed': 0,     # counter for testing limit
+    'report_generated': False # flag to ensure report is only generated once
 }
 
 def _is_calendar_path(parsed_url):
