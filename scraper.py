@@ -109,10 +109,12 @@ def extract_next_links(url, resp):
             analytics['skipped_empty_or_size'] += 1
         return links
 
+    # this thing is needed for double counting error pages.
+    processed = False
     try:
         soup = BeautifulSoup(resp.raw_response.content, 'lxml')
         base_url = resp.url if resp.url else url
-        
+
         # outdated: there are 2 places where we add skip conditions
         # - is the url good?
         # - is the text content likely good?
@@ -133,6 +135,7 @@ def extract_next_links(url, resp):
 
         url_without_fragment, _ = urldefrag(base_url)
         process_page_analytics(url_without_fragment, soup)
+        processed = True
 
         for anchor in soup.find_all('a', href=True):
             href = anchor['href']
@@ -140,8 +143,9 @@ def extract_next_links(url, resp):
             url_without_fragment, _ = urldefrag(absolute_url)
             links.append(url_without_fragment)
     except Exception:
-        with analytics_lock:
-            analytics['skipped_error'] += 1
+        if not processed:
+            with analytics_lock:
+                analytics['skipped_error'] += 1
 
     return links
 
