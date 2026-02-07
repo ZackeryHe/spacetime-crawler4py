@@ -3,6 +3,7 @@ import os
 from urllib.parse import urlparse, urljoin, urldefrag
 from bs4 import BeautifulSoup
 
+TESTING_LIMIT = 50
 
 # *.ics.uci.edu, *.cs.uci.edu, *.informatics.uci.edu, *.stat.uci.edu
 ALLOWED_DOMAIN_PATTERNS = [
@@ -32,7 +33,8 @@ analytics = {
         'word_count': 0
     },
     'word_frequencies': {},         # Dict of word -> count (excluding stop words)
-    'subdomains': {}                # Dict of subdomain -> set of URLs
+    'subdomains': {},               # Dict of subdomain -> set of URLs
+    'pages_processed': 0            # Counter for testing limit
 }
 
 def scraper(url, resp):
@@ -82,6 +84,7 @@ def extract_next_links(url, resp):
 
 def process_page_analytics(url, soup):
     # given the defragmented URL already
+    analytics['pages_processed'] += 1
     analytics['unique_urls'].add(url)
 
     for script_or_style in soup(['script', 'style']):
@@ -114,9 +117,14 @@ def process_page_analytics(url, soup):
     analytics['subdomains'][subdomain].add(url)
 
 def is_valid(url):
-    # Decide whether to crawl this url or not. 
+    # Decide whether to crawl this url or not.
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
+
+    # Hard-coded limit for testing: stop after 50 pages
+    if analytics['pages_processed'] >= TESTING_LIMIT:
+        return False
+
     try:
         parsed = urlparse(url)
         
