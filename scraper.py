@@ -39,15 +39,13 @@ analytics = {
 }
 
 def scraper(url, resp):
-    links = extract_next_links(url, resp)
-
-    # Check if we've hit the testing limit
     if analytics['pages_processed'] >= TESTING_LIMIT:
         if not analytics['report_generated']:
             generate_report()
             analytics['report_generated'] = True
         raise Exception(f"Reached testing limit of {TESTING_LIMIT} pages. Report generated. Stopping crawler.")
 
+    links = extract_next_links(url, resp)
     return [link for link in links if is_valid(link)]
 
 def extract_next_links(url, resp):
