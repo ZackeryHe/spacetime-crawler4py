@@ -1,4 +1,5 @@
 from threading import Thread
+from urllib.parse import urlparse
 
 from inspect import getsource
 from utils.download import download
@@ -21,14 +22,19 @@ class Worker(Thread):
         while True:
             tbd_url = self.frontier.get_tbd_url()
             if not tbd_url:
-                self.logger.info("Frontier is empty. Stopping Crawler.")
+                self.logger.info("Frontier is empty. Stopping Crawler.",
+                                 extra={"domain": ""})
                 break
+            domain = urlparse(tbd_url).netloc
             resp = download(tbd_url, self.config, self.logger)
             self.logger.info(
                 f"Downloaded {tbd_url}, status <{resp.status}>, "
-                f"using cache {self.config.cache_server}.")
+                f"using cache {self.config.cache_server}.",
+                extra={"domain": domain})
             scraped_urls = scraper.scraper(tbd_url, resp)
             for scraped_url in scraped_urls:
                 self.frontier.add_url(scraped_url)
             self.frontier.mark_url_complete(tbd_url)
-            time.sleep(self.config.time_delay)
+        # Flush any remaining buffered log messages
+        for handler in self.logger.handlers:
+            handler.flush()
