@@ -2,8 +2,8 @@ import re
 import os
 from urllib.parse import urlparse, urljoin, urldefrag
 from bs4 import BeautifulSoup
-
-TESTING_LIMIT = 50
+# set to -1 for no limit
+TESTING_LIMIT = -1
 
 # *.ics.uci.edu, *.cs.uci.edu, *.informatics.uci.edu, *.stat.uci.edu
 ALLOWED_DOMAIN_PATTERNS = [
