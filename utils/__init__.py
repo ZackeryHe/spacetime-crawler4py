@@ -58,7 +58,7 @@ _batch_handler = None
 def _get_batch_handler():
     global _batch_handler
     if _batch_handler is None:
-        _batch_handler = BatchStreamHandler(batch_size=50)
+        _batch_handler = BatchStreamHandler(batch_size=1)
         _batch_handler.setLevel(logging.INFO)
         formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         _batch_handler.setFormatter(formatter)
