@@ -119,6 +119,10 @@ def _is_gitlab_trap(parsed_url):
                      '/-/tags/', '/-/commits/']
     return any(seg in path for seg in trap_segments)
 
+def _is_login_page(parsed_url):
+    path = parsed_url.path.lower()
+    return bool(re.search(r'(wp-login|login|signin|sign-in)\.php', path))
+
 def _is_search_or_filter_page(parsed_url):
     if not parsed_url.query:
         return False
@@ -171,6 +175,10 @@ def extract_next_links(url, resp):
         return links
     
     if not resp.raw_response or not resp.raw_response.content:
+        return links
+
+    # skip very large files
+    if len(resp.raw_response.content) > 5_000_000:
         return links
     
     try:
@@ -273,6 +281,9 @@ def is_valid(url):
             + r"|img|apk|war|sql|db|bak)$", parsed.path.lower()):
             return False
         
+        if _is_login_page(parsed):
+            return False
+
         # add our "is this url good" rules here
         if _is_calendar_path(parsed):
             return False
