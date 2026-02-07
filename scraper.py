@@ -63,6 +63,34 @@ def _is_calendar_path(parsed_url):
 
     return False
 
+BINARY_EXTENSIONS = {
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.ico', '.tiff', '.tif',
+    '.webp', '.avif', '.svg', '.psd',
+    '.mp3', '.mp4', '.wav', '.avi', '.mov', '.mkv', '.ogg', '.ogv',
+    '.webm', '.flv', '.wmv', '.wma', '.mid', '.m4v', '.mpeg', '.ram',
+    '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx',
+    '.zip', '.rar', '.gz', '.tar', '.bz2', '.7z', '.iso',
+    '.exe', '.dmg', '.msi', '.bin', '.dll', '.jar',
+    '.woff', '.woff2', '.ttf', '.otf', '.eot',
+    '.css', '.js',
+}
+
+def _has_file_extension_in_query(parsed_url):
+    if not parsed_url.query:
+        return False
+    query_lower = parsed_url.query.lower()
+
+    # check for media-serving actions
+    media_actions = ['do=media', 'action=download', 'action=export']
+    if any(action in query_lower for action in media_actions):
+        return True
+    
+    # check if any query param value ends with a binary extension
+    for ext in BINARY_EXTENSIONS:
+        if ext in query_lower:
+            return True
+    return False
+
 def scraper(url, resp):
     if TESTING_LIMIT >= 0 and analytics['pages_processed'] >= TESTING_LIMIT:
         if not analytics['report_generated']:
@@ -94,6 +122,16 @@ def extract_next_links(url, resp):
     try:
         soup = BeautifulSoup(resp.raw_response.content, 'lxml')
         base_url = resp.url if resp.url else url
+        
+        # there are 2 places where we add skip conditions
+        # - is the url good?
+        # - is the text content likely good?
+        # we will put the text content checking ones right here before we call process_page_analytics
+
+        # is page empty
+        text = soup.get_text()
+        if not text.strip():
+            return links
 
         # process
         # consider throwing error if we do logic in process_page_analytics
@@ -178,11 +216,17 @@ def is_valid(url):
             + r"|data|dat|exe|bz2|tar|msi|bin|7z|psd|dmg|iso"
             + r"|epub|dll|cnf|tgz|sha1"
             + r"|thmx|mso|arff|rtf|jar|csv"
-            + r"|rm|smil|wmv|swf|wma|zip|rar|gz)$", parsed.path.lower()):
+            + r"|rm|smil|wmv|swf|wma|zip|rar|gz"
+            + r"|webp|avif|svg|webm|flv"
+            + r"|woff|woff2|ttf|otf|eot"
+            + r"|img|apk|war|sql|db|bak)$", parsed.path.lower()):
             return False
         
-        # add our rules
+        # add our "is this url good" rules here
         if _is_calendar_path(parsed):
+            return False
+
+        if _has_file_extension_in_query(parsed):
             return False
 
         return True
