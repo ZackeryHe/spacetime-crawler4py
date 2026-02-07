@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 
 from utils.server_registration import get_cache_server
 from utils.config import Config
+from utils.analytics import save_analytics, restore_analytics
 from crawler import Crawler
 
 
@@ -10,9 +11,12 @@ def main(config_file, restart):
     cparser = ConfigParser()
     cparser.read(config_file)
     config = Config(cparser)
+    if not restart:
+        restore_analytics()
     config.cache_server = get_cache_server(config, restart)
     crawler = Crawler(config, restart)
     crawler.start()
+    save_analytics()
 
 
 if __name__ == "__main__":
