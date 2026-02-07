@@ -15,6 +15,7 @@ analytics = {
     'skipped_not_200': 0,
     'skipped_empty_or_size': 0,
     'skipped_duplicate': 0,
+    'skipped_error': 0,
     'skipped_url_filter': 0,
 }
 
@@ -22,6 +23,23 @@ ANALYTICS_SAVE_FILE = "analytics.shelve"
 _analytics_save_interval = 50
 _last_analytics_save_at = 0
 _analytics_save_lock = threading.Lock()
+
+def reset_analytics(path=None):
+    global _last_analytics_save_at
+    with _analytics_save_lock:
+        analytics['unique_urls'] = set()
+        analytics['longest_page'] = {'url': None, 'word_count': 0}
+        analytics['word_frequencies'] = {}
+        analytics['subdomains'] = {}
+        analytics['pages_processed'] = 0
+        analytics['report_generated'] = False
+        analytics['skipped_not_200'] = 0
+        analytics['skipped_empty_or_size'] = 0
+        analytics['skipped_duplicate'] = 0
+        analytics['skipped_error'] = 0
+        analytics['skipped_url_filter'] = 0
+    _last_analytics_save_at = 0
+    save_analytics(path)
 
 
 def maybe_save_analytics():
@@ -40,6 +58,7 @@ def save_analytics(path=None):
             'skipped_not_200': analytics['skipped_not_200'],
             'skipped_empty_or_size': analytics['skipped_empty_or_size'],
             'skipped_duplicate': analytics['skipped_duplicate'],
+            'skipped_error': analytics['skipped_error'],
             'skipped_url_filter': analytics['skipped_url_filter'],
             'unique_urls': list(analytics['unique_urls']),
             'longest_page': dict(analytics['longest_page']),
@@ -68,6 +87,7 @@ def load_analytics(path=None):
                 'skipped_not_200': sh.get('skipped_not_200', 0),
                 'skipped_empty_or_size': sh.get('skipped_empty_or_size', 0),
                 'skipped_duplicate': sh.get('skipped_duplicate', 0),
+                'skipped_error': sh.get('skipped_error', 0),
                 'skipped_url_filter': sh.get('skipped_url_filter', 0),
             }
     except Exception:
@@ -87,5 +107,6 @@ def restore_analytics(path=None):
     analytics['skipped_not_200'] = data['skipped_not_200']
     analytics['skipped_empty_or_size'] = data['skipped_empty_or_size']
     analytics['skipped_duplicate'] = data['skipped_duplicate']
+    analytics['skipped_error'] = data['skipped_error']
     analytics['skipped_url_filter'] = data['skipped_url_filter']
     _last_analytics_save_at = analytics['pages_processed']
