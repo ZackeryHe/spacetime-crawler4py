@@ -1,5 +1,6 @@
 import re
 import os
+import sys
 from urllib.parse import urlparse, urljoin, urldefrag
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
@@ -8,6 +9,7 @@ from utils import get_logger
 from utils.duplicate_checker import DuplicateChecker
 from utils.analytics import analytics, maybe_save_analytics, save_analytics
 from utils.url_filters import UrlFilter
+from utils.content_filters import ContentFilter
 
 _logger = get_logger("SCRAPER")
 _duplicate_checker = DuplicateChecker(n=1000, similarity_threshold=0.9)
@@ -15,6 +17,9 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 # set to -1 for no limit
 TESTING_LIMIT = -1
+
+DATASET_THRESHOLD = 0.4
+TEXT_RATIO_THRESHOLD = 0.6
 
 # *.ics.uci.edu, *.cs.uci.edu, *.informatics.uci.edu, *.stat.uci.edu
 ALLOWED_DOMAIN_PATTERNS = [
@@ -36,9 +41,10 @@ BINARY_EXTENSIONS = {
     '.lif', '.rle', '.pov',
     '.ps', '.eps', '.tex', '.names', '.data', '.dat', '.cnf', '.tgz', '.sha1',
     '.thmx', '.mso', '.arff', '.rm', '.smil', '.img', '.apk', '.war', '.sql', '.db', '.bak',
-    '.epub', '.rtf', '.csv', '.swf', '.mol', '.java', '.can', '.untetra', '.bib', '.py', '.c', '.h'
+    '.epub', '.rtf', '.csv', '.swf', '.mol', '.java', '.can', '.untetra', '.bib', '.py', '.c', '.h', '.ff'
 }
-_url_filter = UrlFilter(ALLOWED_DOMAIN_PATTERNS, BINARY_EXTENSIONS)
+_url_filter = UrlFilter(ALLOWED_DOMAIN_PATTERNS, BINARY_EXTENSIONS, dataset_threshold=DATASET_THRESHOLD)
+_content_filter = ContentFilter(text_ratio_threshold=TEXT_RATIO_THRESHOLD)
 
 
 def _load_stop_words():
@@ -109,7 +115,7 @@ def extract_next_links(url, resp):
         # efforts should be focused all on url detection
 
         text = soup.get_text()
-        if not text.strip():
+        if _content_filter.should_skip(text):
             analytics['skipped_empty_or_size'] += 1
             return links
         if _duplicate_checker.is_duplicate(text):
@@ -125,9 +131,9 @@ def extract_next_links(url, resp):
             absolute_url = urljoin(base_url, href)
             url_without_fragment, _ = urldefrag(absolute_url)
             links.append(url_without_fragment)
-    except Exception as e:
-        pass
-    
+    except Exception:
+        analytics['skipped_error'] += 1
+
     return links
 
 def process_page_analytics(url, soup):
