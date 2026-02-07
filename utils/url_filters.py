@@ -1,6 +1,8 @@
 import re
 from urllib.parse import urlparse, parse_qs
 
+from utils.tokenizer import tokenize_string
+
 
 EXACT_TRAP_PARAMS = {'q', 's'}
 CONTAINS_TRAP_PARAMS = {'search', 'query', 'filter', 'share'}
@@ -9,9 +11,10 @@ PAGINATION_QUERY_PARAMS = ['p=', 'cat=', 'author=', 'page_id=']
 
 
 class UrlFilter:
-    def __init__(self, allowed_domain_patterns, binary_extensions):
+    def __init__(self, allowed_domain_patterns, binary_extensions, dataset_threshold=0.5):
         self._allowed_domain_patterns = allowed_domain_patterns
         self._binary_extensions = binary_extensions
+        self._dataset_threshold = dataset_threshold
 
     def is_valid(self, url):
         try:
@@ -51,6 +54,8 @@ class UrlFilter:
             if self._is_search_or_filter_page(parsed):
                 return False
             if self._is_dir_listing_sort_query(parsed):
+                return False
+            if self._is_dataset(parsed):
                 return False
             return True
         except (TypeError, AttributeError):
@@ -115,6 +120,16 @@ class UrlFilter:
             return False
         q = parsed_url.query.lower()
         return 'c=' in q and 'o=' in q
+
+    def _is_dataset(self, parsed_url):
+        path_query = (parsed_url.path or '') + ('?' + parsed_url.query if parsed_url.query else '')
+        if 'data' not in path_query.lower():
+            return False
+        tokens = tokenize_string(path_query)
+        if not tokens:
+            return False
+        num_numeric = sum(1 for t in tokens if t.isdigit())
+        return num_numeric / len(tokens) >= self._dataset_threshold
 
     def _is_display_html_trap(self, parsed_url):
         return bool(re.search(r'display\.html/.+', parsed_url.path.lower()))
