@@ -68,6 +68,10 @@ def _is_calendar_path(parsed_url):
     if re.search(r'/events/(month|day|week|list|category)/', path):
         return True
 
+    # check for /timeline paths (Trac wiki timeline trap)
+    if '/timeline' in path:
+        return True
+
     # check for date parameters in query
     if parsed_url.query:
         query_lower = parsed_url.query.lower()
@@ -122,11 +126,22 @@ def _is_search_or_filter_page(parsed_url):
     return any(param in query_lower for param in search_params)
 
 def _is_wiki_trap(parsed_url):
-    if 'doku.php' in parsed_url.path.lower() and parsed_url.query:
-        query_lower = parsed_url.query.lower()
+    if not parsed_url.query:
+        return False
+    query_lower = parsed_url.query.lower()
+    path_lower = parsed_url.path.lower()
+
+    # DokuWiki traps
+    if 'doku.php' in path_lower:
         wiki_traps = ['do=', 'idx=', 'sectok=']
         if any(trap in query_lower for trap in wiki_traps):
             return True
+
+    # Trac wiki version/diff/format traps
+    trac_traps = ['version=', 'action=diff', 'format=txt']
+    if any(trap in query_lower for trap in trac_traps):
+        return True
+
     return False
 
 def scraper(url, resp):
