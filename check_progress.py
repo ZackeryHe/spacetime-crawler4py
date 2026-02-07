@@ -95,6 +95,17 @@ def _print_report(analytics_file="analytics.shelve"):
     for rank, (word, count) in enumerate(top_50, 1):
         print("  {:>3}. {:<{}} {}".format(rank, str(word), WIDTH-4, count))
 
+    # Tracked word sources
+    word_sources = data.get('word_sources', {})
+    for tracked_word in sorted(word_sources.keys()):
+        sources = word_sources[tracked_word]
+        top_sources = sorted(sources.items(), key=lambda x: x[1], reverse=True)[:20]
+        print("\n" + _rule())
+        print('  Tracked Word "{}" — Top {} Source URLs'.format(tracked_word, len(top_sources)))
+        print(_rule())
+        for rank, (src_url, cnt) in enumerate(top_sources, 1):
+            print("  {:>3}. {} — {}".format(rank, src_url, cnt))
+
     # Q4: Subdomains in *.ics.uci.edu (alphabetical, with page counts)
     ics_subdomains = {
         sub: urls for sub, urls in subdomains.items()
