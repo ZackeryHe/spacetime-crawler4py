@@ -6,6 +6,7 @@ from utils.tokenizer import tokenize_string
 
 EXACT_TRAP_PARAMS = {'q', 's'}
 CONTAINS_TRAP_PARAMS = {'search', 'query', 'filter', 'share'}
+DATASET_PATH_SEGMENTS = {'sampledata', 'dataset', 'datasets', 'rawdata'}
 MAX_PAGINATION_PAGE = 5
 PAGINATION_QUERY_PARAMS = ['p=', 'cat=', 'author=', 'page_id=', 'limit=']
 
@@ -122,8 +123,14 @@ class UrlFilter:
         return 'c=' in q and 'o=' in q
 
     def _is_dataset(self, parsed_url):
-        path_query = (parsed_url.path or '') + ('?' + parsed_url.query if parsed_url.query else '')
-        if 'data' not in path_query.lower():
+        path_lower = parsed_url.path.lower()
+        segments = [s for s in path_lower.split('/') if s]
+
+        if DATASET_PATH_SEGMENTS & set(segments):
+            return True
+
+        path_query = path_lower + ('?' + parsed_url.query if parsed_url.query else '')
+        if 'data' not in path_query:
             return False
         tokens = tokenize_string(path_query)
         if not tokens:
