@@ -61,7 +61,7 @@ def _is_calendar_path(parsed_url):
     # check for date parameters in query
     if parsed_url.query:
         query_lower = parsed_url.query.lower()
-        date_params = ['date', 'year', 'month', 'day', 'time', 'timestamp']
+        date_params = ['date', 'year', 'month', 'day', 'time', 'timestamp', 'ical']
         if any(param in query_lower for param in date_params):
             return True
 
