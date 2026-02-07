@@ -25,6 +25,16 @@ def _load_stop_words():
 
 STOP_WORDS = _load_stop_words()
 
+analytics = {
+    'unique_urls': set(),           # Set of defragmented URLs for unique page count
+    'longest_page': {               # Track longest page by word count
+        'url': None,
+        'word_count': 0
+    },
+    'word_frequencies': {},         # Dict of word -> count (excluding stop words)
+    'subdomains': {}                # Dict of subdomain -> set of URLs
+}
+
 def scraper(url, resp):
     links = extract_next_links(url, resp)
     return [link for link in links if is_valid(link)]
@@ -50,7 +60,16 @@ def extract_next_links(url, resp):
     try:
         soup = BeautifulSoup(resp.raw_response.content, 'lxml')
         base_url = resp.url if resp.url else url
-        
+
+        # process
+        # consider throwing error if we do logic in process_page_analytics
+        # and we decide ignoring it. or just check before calling the function
+        # throwing error might be more efficient than processing text 2+ times
+        # even though its kinda nasty
+        # try:
+        url_without_fragment, _ = urldefrag(base_url)
+        process_page_analytics(url_without_fragment, soup)
+
         for anchor in soup.find_all('a', href=True):
             href = anchor['href']
             absolute_url = urljoin(base_url, href)
@@ -60,6 +79,39 @@ def extract_next_links(url, resp):
         pass
     
     return links
+
+def process_page_analytics(url, soup):
+    # given the defragmented URL already
+    analytics['unique_urls'].add(url)
+
+    for script_or_style in soup(['script', 'style']):
+        script_or_style.decompose()
+
+    text = soup.get_text()
+
+    # extract alphanumeric words
+    tokens = re.findall(r'[a-zA-Z0-9]+', text.lower())
+
+    # filter out stop words and 1-character words
+    # SHOULD WE FILTER OUT 1 CHAR WORDS?
+    words = [token for token in tokens if token not in STOP_WORDS and len(token) > 1]
+
+    # word frequencies
+    for word in words:
+        analytics['word_frequencies'][word] = analytics['word_frequencies'].get(word, 0) + 1
+
+    # longest page
+    word_count = len(words)
+    if word_count > analytics['longest_page']['word_count']:
+        analytics['longest_page']['url'] = url
+        analytics['longest_page']['word_count'] = word_count
+
+    # subdomain and track pages per subdomain
+    parsed = urlparse(url)
+    subdomain = parsed.netloc.lower()
+    if subdomain not in analytics['subdomains']:
+        analytics['subdomains'][subdomain] = set()
+    analytics['subdomains'][subdomain].add(url)
 
 def is_valid(url):
     # Decide whether to crawl this url or not. 
