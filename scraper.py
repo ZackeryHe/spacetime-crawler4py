@@ -65,10 +65,13 @@ def _is_calendar_path(parsed_url):
 
 def scraper(url, resp):
     if analytics['pages_processed'] >= TESTING_LIMIT:
-        if not analytics['report_generated']:
-            generate_report()
-            analytics['report_generated'] = True
-        raise Exception(f"Reached testing limit of {TESTING_LIMIT} pages. Report generated. Stopping crawler.")
+        if TESTING_LIMIT < 0:
+            pass
+        else:
+            if not analytics['report_generated']:
+                generate_report()
+                analytics['report_generated'] = True
+            raise Exception(f"Reached testing limit of {TESTING_LIMIT} pages. Report generated. Stopping crawler.")
 
     links = extract_next_links(url, resp)
     return [link for link in links if is_valid(link)]
