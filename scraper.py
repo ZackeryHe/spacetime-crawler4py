@@ -115,7 +115,8 @@ def _is_gitlab_trap(parsed_url):
     path = parsed_url.path.lower()
     trap_segments = ['/-/commit/', '/-/blob/', '/-/tree/', '/-/raw/',
                      '/-/blame/', '/-/compare/', '/-/merge_requests/',
-                     '/-/jobs/', '/-/pipelines/', '/-/network/']
+                     '/-/jobs/', '/-/pipelines/', '/-/network/',
+                     '/-/tags/', '/-/commits/']
     return any(seg in path for seg in trap_segments)
 
 def _is_search_or_filter_page(parsed_url):
