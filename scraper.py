@@ -10,6 +10,7 @@ from utils.duplicate_checker import DuplicateChecker
 from utils.analytics import analytics, analytics_lock, maybe_save_analytics, save_analytics
 from utils.url_filters import UrlFilter
 from utils.content_filters import ContentFilter
+from utils.tokenizer import tokenize_string
 
 _logger = get_logger("SCRAPER")
 _duplicate_checker = DuplicateChecker(n=1000, similarity_threshold=0.9)
@@ -149,7 +150,7 @@ def process_page_analytics(url, soup):
     text = soup.get_text()
 
     # extract alphanumeric words
-    tokens = re.findall(r'[a-zA-Z0-9]+', text.lower())
+    tokens = tokenize_string(text)
 
     # filter out stop words and 1-character words
     words = [token for token in tokens if token not in STOP_WORDS and len(token) > 1]
