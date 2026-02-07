@@ -54,6 +54,10 @@ def _is_calendar_path(parsed_url):
                     if 1 <= month <= 12:
                         return True
 
+    # check for YYYY-MM-DD pattern
+    if re.search(r'\b\d{4}-\d{2}-\d{2}\b', path):
+        return True
+
     # check for date parameters in query
     if parsed_url.query:
         query_lower = parsed_url.query.lower()
