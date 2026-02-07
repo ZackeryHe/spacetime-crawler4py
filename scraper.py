@@ -100,6 +100,15 @@ def _has_file_extension_in_query(parsed_url):
             return True
     return False
 
+def _is_gitlab_trap(parsed_url):
+    if 'gitlab' not in parsed_url.netloc.lower():
+        return False
+    path = parsed_url.path.lower()
+    trap_segments = ['/-/commit/', '/-/blob/', '/-/tree/', '/-/raw/',
+                     '/-/blame/', '/-/compare/', '/-/merge_requests/',
+                     '/-/jobs/', '/-/pipelines/', '/-/network/']
+    return any(seg in path for seg in trap_segments)
+
 def _is_wiki_trap(parsed_url):
     if 'doku.php' in parsed_url.path.lower() and parsed_url.query:
         query_lower = parsed_url.query.lower()
@@ -247,6 +256,9 @@ def is_valid(url):
             return False
 
         if _is_wiki_trap(parsed):
+            return False
+
+        if _is_gitlab_trap(parsed):
             return False
 
         return True
