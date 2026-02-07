@@ -59,8 +59,12 @@ def _is_calendar_path(parsed_url):
                     if 1 <= month <= 12:
                         return True
 
-    # check for YYYY-MM-DD pattern
-    if re.search(r'\b\d{4}-\d{2}-\d{2}\b', path):
+    # check for YYYY-MM-DD or YYYY-MM pattern in path
+    if re.search(r'\b\d{4}-\d{2}(-\d{2})?\b', path):
+        return True
+
+    # check for /events/month/, /events/day/, /events/week/ style paths
+    if re.search(r'/events/(month|day|week|list|category)/', path):
         return True
 
     # check for date parameters in query
@@ -109,6 +113,13 @@ def _is_gitlab_trap(parsed_url):
                      '/-/jobs/', '/-/pipelines/', '/-/network/']
     return any(seg in path for seg in trap_segments)
 
+def _is_search_or_filter_page(parsed_url):
+    if not parsed_url.query:
+        return False
+    query_lower = parsed_url.query.lower()
+    search_params = ['search=', 'query=', 'q=', 's=']
+    return any(param in query_lower for param in search_params)
+
 def _is_wiki_trap(parsed_url):
     if 'doku.php' in parsed_url.path.lower() and parsed_url.query:
         query_lower = parsed_url.query.lower()
@@ -149,22 +160,19 @@ def extract_next_links(url, resp):
         soup = BeautifulSoup(resp.raw_response.content, 'lxml')
         base_url = resp.url if resp.url else url
         
-        # there are 2 places where we add skip conditions
+        # outdated: there are 2 places where we add skip conditions
         # - is the url good?
         # - is the text content likely good?
         # we will put the text content checking ones right here before we call process_page_analytics
+
+        # ...actually, I think checks here are low value because we have already downloaded the page
+        # efforts should be focused all on url detection
 
         # is page empty
         text = soup.get_text()
         if not text.strip():
             return links
 
-        # process
-        # consider throwing error if we do logic in process_page_analytics
-        # and we decide ignoring it. or just check before calling the function
-        # throwing error might be more efficient than processing text 2+ times
-        # even though its kinda nasty
-        # try:
         url_without_fragment, _ = urldefrag(base_url)
         process_page_analytics(url_without_fragment, soup)
 
@@ -259,6 +267,9 @@ def is_valid(url):
             return False
 
         if _is_gitlab_trap(parsed):
+            return False
+
+        if _is_search_or_filter_page(parsed):
             return False
 
         return True
