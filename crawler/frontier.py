@@ -131,7 +131,8 @@ class Frontier(object):
             self.logger.error(
                 f"Completed url {url}, but have not seen it before.")
 
-        self.save[urlhash] = (url, True)
-        self.save.sync()
-        self.active_workers -= 1
-        self.url_available.notify_all()
+        with self.url_available:
+            self.save[urlhash] = (url, True)
+            self.save.sync()
+            self.active_workers -= 1
+            self.url_available.notify_all()
