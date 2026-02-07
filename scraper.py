@@ -34,11 +34,20 @@ analytics = {
     },
     'word_frequencies': {},         # Dict of word -> count (excluding stop words)
     'subdomains': {},               # Dict of subdomain -> set of URLs
-    'pages_processed': 0            # Counter for testing limit
+    'pages_processed': 0,           # Counter for testing limit
+    'report_generated': False       # Flag to ensure report is only generated once
 }
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
+
+    # Check if we've hit the testing limit
+    if analytics['pages_processed'] >= TESTING_LIMIT:
+        if not analytics['report_generated']:
+            generate_report()
+            analytics['report_generated'] = True
+        raise Exception(f"Reached testing limit of {TESTING_LIMIT} pages. Report generated. Stopping crawler.")
+
     return [link for link in links if is_valid(link)]
 
 def extract_next_links(url, resp):
@@ -153,3 +162,13 @@ def is_valid(url):
 
     except (TypeError, AttributeError) as e:
         return False
+
+def generate_report(filename="report.txt"):
+    with open(filename, 'w') as f:
+        f.write(f"unique_pages: {len(analytics['unique_urls'])}\n")
+        f.write(f"longest_page: {analytics['longest_page']}\n")
+        f.write(f"top_50_words: {sorted(analytics['word_frequencies'].items(), key=lambda x: x[1], reverse=True)[:50]}\n")
+        f.write("subdomains:\n")
+        for subdomain in sorted(analytics['subdomains'].keys()):
+            f.write(f"{subdomain} {len(analytics['subdomains'][subdomain])}\n")
+    print(f"Report saved to {filename}")
