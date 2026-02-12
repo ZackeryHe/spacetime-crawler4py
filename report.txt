@@ -1,0 +1,171 @@
+=================================================================
+  Q1: Unique Pages
+=================================================================
+  Count                                               4556
+
+=================================================================
+  Q2: Longest Page (by word count)
+=================================================================
+  https://www.stat.uci.edu/covid19/index.html
+  Words                                               28866
+
+=================================================================
+  Q3: 50 Most Common Words
+=================================================================
+    1. ics                                            11576
+    2. research                                       11407
+    3. data                                           8850
+    4. uci                                            8590
+    5. computer                                       8062
+    6. information                                    7727
+    7. students                                       6907
+    8. will                                           6852
+    9. software                                       6547
+   10. 2021                                           6169
+   11. ramesh                                         5473
+   12. science                                        5346
+   13. can                                            5244
+   14. events                                         5173
+   15. student                                        5107
+   16. us                                             5091
+   17. markellekelly                                  5073
+   18. 10                                             4987
+   19. 2020                                           4796
+   20. systems                                        4789
+   21. 2022                                           4724
+   22. news                                           4678
+   23. university                                     4670
+   24. time                                           4528
+   25. current                                        4520
+   26. computing                                      4515
+   27. 2023                                           4514
+   28. search                                         4473
+   29. irvine                                         4326
+   30. 2018                                           4303
+   31. 00                                             4270
+   32. new                                            4266
+   33. 2025                                           4235
+   34. people                                         4202
+   35. projects                                       4164
+   36. may                                            4145
+   37. one                                            4002
+   38. learning                                       3858
+   39. edu                                            3746
+   40. 11                                             3740
+   41. past                                           3678
+   42. support                                        3645
+   43. graduate                                       3611
+   44. 12                                             3558
+   45. courses                                        3538
+   46. html                                           3519
+   47. wics                                           3417
+   48. engineering                                    3398
+   49. code                                           3313
+   50. home                                           3233
+
+=================================================================
+  Q4: Subdomains (103 found)
+=================================================================
+  accessibility.ics.uci.edu                           5
+  acoi.ics.uci.edu                                    76
+  archive-beta.ics.uci.edu                            8
+  archive.ics.uci.edu                                 7
+  asterix.ics.uci.edu                                 6
+  betapro.proteomics.ics.uci.edu                      3
+  capstone.cs.uci.edu                                 5
+  cdb.ics.uci.edu                                     5
+  cert.ics.uci.edu                                    9
+  checkin.ics.uci.edu                                 2
+  chenli.ics.uci.edu                                  8
+  circadiomics.ics.uci.edu                            5
+  cloudberry.ics.uci.edu                              22
+  cml.ics.uci.edu                                     19
+  code.ics.uci.edu                                    14
+  computableplant.ics.uci.edu                         63
+  containers.ics.uci.edu                              1
+  courselisting.ics.uci.edu                           2
+  create.ics.uci.edu                                  5
+  cs.ics.uci.edu                                      8
+  cs.uci.edu                                          1
+  cwicsocal18.ics.uci.edu                             10
+  cyberclub.ics.uci.edu                               11
+  cybert.ics.uci.edu                                  20
+  dgillen.ics.uci.edu                                 10
+  ds4all.ics.uci.edu                                  5
+  duttgroup.ics.uci.edu                               22
+  dynamo.ics.uci.edu                                  2
+  edgelab.ics.uci.edu                                 7
+  emj.ics.uci.edu                                     22
+  evoke.ics.uci.edu                                   2
+  flamingo.ics.uci.edu                                7
+  fr.ics.uci.edu                                      3
+  futurehealth.ics.uci.edu                            113
+  gitlab.ics.uci.edu                                  45
+  gradinfo.ics.uci.edu                                1
+  grape.ics.uci.edu                                   86
+  graphics.ics.uci.edu                                1
+  hack.ics.uci.edu                                    2
+  hai.ics.uci.edu                                     6
+  helpdesk.ics.uci.edu                                1
+  hobbes.ics.uci.edu                                  9
+  hpi.ics.uci.edu                                     5
+  hub.ics.uci.edu                                     1
+  i-sensorium.ics.uci.edu                             4
+  icde2023.ics.uci.edu                                34
+  ics.uci.edu                                         123
+  industryshowcase.ics.uci.edu                        16
+  informatics.ics.uci.edu                             1
+  insite.ics.uci.edu                                  8
+  intranet.ics.uci.edu                                1
+  ipubmed.ics.uci.edu                                 1
+  isg.ics.uci.edu                                     218
+  jgarcia.ics.uci.edu                                 1
+  julia-hub.ics.uci.edu                               1
+  luci.ics.uci.edu                                    4
+  mailman.ics.uci.edu                                 20
+  mcs.ics.uci.edu                                     12
+  mdogucu.ics.uci.edu                                 1
+  mds.ics.uci.edu                                     8
+  mhcid.ics.uci.edu                                   17
+  mlphysics.ics.uci.edu                               18
+  motifmap.ics.uci.edu                                1
+  mswe.ics.uci.edu                                    2
+  mupro.proteomics.ics.uci.edu                        2
+  nalini.ics.uci.edu                                  5
+  netreg.ics.uci.edu                                  1
+  ngs.ics.uci.edu                                     958
+  oai.ics.uci.edu                                     5
+  observium.ics.uci.edu                               1
+  onboarding.ics.uci.edu                              2
+  password.ics.uci.edu                                5
+  pepito.proteomics.ics.uci.edu                       3
+  pgadmin.ics.uci.edu                                 1
+  psearch.ics.uci.edu                                 1
+  riscit.ics.uci.edu                                  3
+  scale.ics.uci.edu                                   7
+  scratch.proteomics.ics.uci.edu                      3
+  seal.ics.uci.edu                                    46
+  selectpro.proteomics.ics.uci.edu                    6
+  sherlock.ics.uci.edu                                6
+  speedtest.ics.uci.edu                               1
+  stairs.ics.uci.edu                                  4
+  statconsulting.ics.uci.edu                          1
+  statistics-stage.ics.uci.edu                        9
+  student-council.ics.uci.edu                         4
+  summeracademy.ics.uci.edu                           5
+  support.ics.uci.edu                                 4
+  swiki.ics.uci.edu                                   110
+  tad.ics.uci.edu                                     2
+  tastier.ics.uci.edu                                 1
+  tutoring.ics.uci.edu                                5
+  unite.ics.uci.edu                                   10
+  vision.ics.uci.edu                                  188
+  wics.ics.uci.edu                                    492
+  wiki.ics.uci.edu                                    100
+  www-db.ics.uci.edu                                  23
+  www.cs.uci.edu                                      2
+  www.ics.uci.edu                                     1133
+  www.informatics.ics.uci.edu                         1
+  www.informatics.uci.edu                             155
+  www.stat.uci.edu                                    89
+  xtune.ics.uci.edu                                   6
